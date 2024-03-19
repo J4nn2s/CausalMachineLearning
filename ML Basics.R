@@ -24,38 +24,31 @@ cv.glm(exercDat, glmFit, K=10)$delta
 glmFit2 = glm(y ~ poly(x, 2))
 cv.glm(exercDat, glmFit2, K =10)$delta
 
-
 load("pension.rda")
-newData = pension[,c("net_tfa","age", "db","educ","fsize", "hown","marr", "pira","male",
-                     "twoearn","inc")]
-  
+library(tree)
 
-x <- model.matrix(net_tfa~. , data = newData)[,-1]
-y <- newData$net_tfa
-
-
-# Split data
+newData <- pension[,c("net_tfa","age", "db","educ","fsize", "hown","marr", "pira","male",
+                      "twoearn","inc")]
 
 
 set.seed(123)
-train = sample(1:nrow(x), nrow(x) * 0.8)
-test = (-train)
+train <- sample(1:nrow(newData), 5000)
+test <- (-train)
+yTest <- newData$net_tfa[test]
 
 
-y.test = y[test]
+treeMod <- tree(formula = net_tfa ~., data = newData[train,])
+summary(treeMod)
 
+yRegTest <- predict(treeMod, newdata = newData[test,])
 
-grid <- 10^seq(10, -2, length.out= 100)
-
-ridgeMod=glmnet(x[train,],y[train],alpha=0,lambda=grid)
-
-library(glmnet)
-
-
-# Cross validation
+mean((yRegTest-yTest)^2)
 set.seed(123)
-cvRidge=cv.glmnet(x[train,],y[train],alpha=0)
-# Optimal lambda
-bestLamRidge=cvRidge$lambda.min
-bestLamRidge
+crossTree <- cv.tree(treeMod, FUN = prune.tree)
+     
 
+
+prunedTree <- prune.tree(tree = treeMod, best = 5)
+pruni <- predict(prunedTree, newdata = newData[test,])
+
+mean((yTest-pruni)^2)
